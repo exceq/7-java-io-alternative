@@ -1,0 +1,10 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="vcs:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/vcs_jar</output-path>
+    <root id="archive" name="7-java-io-alternative.jar">
+      <element id="directory" name="META-INF">
+        <element id="file-copy" path="$PROJECT_DIR$/src/main/resources/META-INF/MANIFEST.MF" />
+      </element>
+    </root>
+  </artifact>
+</component>

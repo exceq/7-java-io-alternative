@@ -1,17 +1,27 @@
+import lombok.Data;
+
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
+@Data
 public class MyFile {
-    String fileName;
+    String name;
     String path;
+    String content;
     long size;
     long date;
 
+    public MyFile() {}
+
     public MyFile(File file) {
         try {
-            fileName = file.getName();
+            name = file.getName();
             path = file.getPath();
+            content = new String(Files.readAllBytes(Paths.get(name)));
             size = file.length();
             date = file.lastModified();
         } catch (Exception e){
@@ -19,19 +29,16 @@ public class MyFile {
         }
     }
 
-    static ArrayList<MyFile> getMyFileList(File[] files, String vscName)
+    static ArrayList<MyFile> getMyFileList(ArrayList<File> files)
     {
-        ArrayList<MyFile> result = new ArrayList<>();
-        for (File file: files) {
-            if (!file.getName().equals(vscName))
-                result.add(new MyFile(file));
-        }
-        return result;
+        return files.stream()
+                    .map(MyFile::new)
+                    .collect(Collectors.toCollection(ArrayList<MyFile>::new));
     }
 
     @Override
     public String toString() {
-        return fileName;
+        return name;
     }
 
     @Override
@@ -39,11 +46,13 @@ public class MyFile {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         MyFile myFile = (MyFile) o;
-        return size == myFile.size && date == myFile.date && Objects.equals(fileName, myFile.fileName) && Objects.equals(path, myFile.path);
+        return size == myFile.size && date == myFile.date && Objects.equals(name, myFile.name) && Objects.equals(path, myFile.path);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(fileName, path, size, date);
+        return Objects.hash(name, path, size, date);
     }
+
+
 }

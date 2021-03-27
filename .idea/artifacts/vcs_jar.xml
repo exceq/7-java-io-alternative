@@ -2,9 +2,11 @@
   <artifact type="jar" name="vcs:jar">
     <output-path>$PROJECT_DIR$/out/artifacts/vcs_jar</output-path>
     <root id="archive" name="7-java-io-alternative.jar">
-      <element id="directory" name="META-INF">
-        <element id="file-copy" path="$PROJECT_DIR$/src/main/resources/META-INF/MANIFEST.MF" />
-      </element>
+      <element id="module-output" name="7-java-io-alternative" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.18/lombok-1.18.18.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/com/fasterxml/jackson/core/jackson-core/2.12.1/jackson-core-2.12.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/com/fasterxml/jackson/core/jackson-databind/2.12.1/jackson-databind-2.12.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/com/fasterxml/jackson/core/jackson-annotations/2.12.1/jackson-annotations-2.12.1.jar" path-in-jar="/" />
     </root>
   </artifact>
 </component>

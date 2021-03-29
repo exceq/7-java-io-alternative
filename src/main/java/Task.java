@@ -1,7 +1,10 @@
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Scanner;
 
 public class Task {
+    //TODO убрать сущность имени из vcs
     public static void main(String[] args) throws IOException {
         StatusExec out = executeCommand(args);
         switch (out) {

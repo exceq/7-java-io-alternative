@@ -37,8 +37,8 @@ public class Controller {
         if (vcs != null) {
             return "qeError: vsc " + name + " already created";
         } else {
-            VersionControl a = VersionControl.init(name);
-            vcs = a;
+            vcs = VersionControl.init(name);
+            vcs.commit("Start!");
             return name + " initialized";
         }
     }

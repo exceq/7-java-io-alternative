@@ -1,49 +1,50 @@
 import lombok.Data;
 
+import javax.management.ReflectionException;
 import java.io.*;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
+import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Data
 public class VersionControl {
-    private File fileVsc;
-    private String vscName;
+    private File vcsFile;
+    private String vcsDataName;
     private ArrayList<Revision> revisions = new ArrayList<>();
     private ArrayList<MyFile> files = new ArrayList<>();
     private int currentRevision;
 
-    public VersionControl() {}
+    public VersionControl() {
+    }
 
-    private VersionControl(String vscName) {
+    private VersionControl(String vcsDataName) {
         try {
-            File file = new File(vscName);
+            File file = new File(vcsDataName);
             file.createNewFile();
-            this.fileVsc = file;
-            this.vscName = file.getName();
+            this.vcsFile = file;
+            this.vcsDataName = file.getName();
         } catch (IOException e) {
             System.out.println("Error: failed to create file");
         }
     }
 
-    public static VersionControl init(String vscName) {
-        return new VersionControl(vscName);
+    public static VersionControl init(String vscDataName) {
+        return new VersionControl(vscDataName);
     }
 
     public String commit(String commit) {
         if (currentRevision != revisions.size() - 1 && currentRevision != 0)
-            return "Do \"checkout " + (revisions.size() - 1)  + "\" and try again";
+            return "Do \"checkout " + (revisions.size() - 1) + "\" and try again";
         File[] files = getCurrentFiles();
         Revision rev = createRevision(files, revisions.size(), commit);
         revisions.add(rev);
         this.files.addAll(rev.created);
-        if (rev.deleted != null) {
-            for (MyFile file : rev.deleted) {
-                this.files.removeIf(x -> x.name.equals(file.name));
-            }
-        }
+        if (rev.deleted != null)
+            rev.deleted.forEach(d -> this.files.removeIf(f -> f.name.equals(d.name)));
         currentRevision = rev.revisionId;
         return "Created revision " + rev.revisionId;
     }
@@ -58,7 +59,7 @@ public class VersionControl {
         StringBuilder builder = new StringBuilder();
         for (Revision rev : revisions.subList(1, revisions.size())) {
             builder.append(String.format("Revision %d\n", rev.revisionId));
-            builder.append(String.format("Date: %s\n", rev.date.toString()));
+            builder.append(String.format("Date: %s\n", rev.date));
             builder.append(String.format("Files: %d\n", rev.countFiles));
             builder.append(String.format("Comment: %s\n\n", rev.comment));
         }
@@ -76,54 +77,81 @@ public class VersionControl {
         if (two > revisions.size() - 1)
             return "Revision " + two + " hasn't been created yet.";
 
-        return printChanges(getChangeList(new ArrayList<>(revisions.subList(one + 1, two + 1))));
+        return printChanges(getResultRevision(new ArrayList<>(revisions.subList(one + 1, two + 1))));
     }
 
     public String checkout(int number) {
         if (number < 1)
             return "The revision number must be greater than 0";
-        if (number > revisions.size()- 1)
+        if (number > revisions.size() - 1)
             return "Revision " + number + " hasn't been created yet.";
         if (number == currentRevision)
             return "You are already on Revision " + number;
-        boolean forward = number < currentRevision;
+        boolean back = number < currentRevision;
 
-        var b = getChangeList(new ArrayList<>(revisions.subList(Math.min(number, currentRevision), Math.max(number + 1, currentRevision + 1))));
-        if (forward) { //forward
+        var b = getResultRevision(new ArrayList<>(revisions.subList(Math.min(number, currentRevision), Math.max(number + 1, currentRevision + 1))));
+        if (back) { //forward
             var t = new ArrayList<MyFile>(b.created);
             b.created = new ArrayList<>(b.deleted);
             b.deleted = t;
         }
         b.modified = b.modified.stream().distinct().collect(Collectors.toCollection(ArrayList::new));
-        for (MyFile file:b.deleted){
-            new File(file.name).delete();
-        }
-        for (MyFile file:b.created){
-            var f = new File(file.name);
+
+        deleteFiles(b.deleted, true);
+        deleteFiles(b.deleted, false);
+
+        modifyFiles(b.created, true);
+        modifyFiles(b.modified, false);
+        currentRevision = number;
+        return printChanges(b);
+    }
+
+    private void deleteFiles(ArrayList<MyFile> files, boolean deleteCommonFiles){
+        files.stream()
+                .filter(x-> x.isDirectory ^ deleteCommonFiles)
+                .sorted(getComp().reversed())
+                .forEach(file -> {
+                    try {
+                        Files.delete(Paths.get(file.path));
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
+    }
+
+    private int count(String str, char c){
+        return (int)new StringBuilder(str).chars().filter(x->x==(int)c).count();
+    }
+
+    private Comparator<MyFile> getComp(){
+        return Comparator.comparing(f -> count(f.path,'\\'));
+    }
+    private void modifyFiles(ArrayList<MyFile> files, boolean create) {
+        files.stream()
+                .filter(x -> x.isDirectory && !new File(x.path).exists())
+                .sorted(getComp())
+                .map(x -> Paths.get(x.path))
+                .forEach(dir -> {
             try {
-                f.createNewFile();
+                Files.createDirectory(dir);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+        files.stream().filter(x -> !x.isDirectory).forEach(file -> {
+            File f = new File(file.path);
+            try {
+                if (create)
+                    f.createNewFile();
                 FileWriter writer = new FileWriter(f, false);
                 writer.write(file.content);
                 writer.flush();
                 writer.close();
                 f.setLastModified(file.date);
-            }catch (IOException e){
-                System.out.println(e.getMessage());
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        }
-        for (MyFile file:b.modified){
-            File f = new File(file.name);
-            try (FileWriter writer = new FileWriter(f, false)){
-                writer.append(file.content);
-                writer.flush();
-                writer.close();
-                f.setLastModified(file.date);
-            } catch (IOException e){
-                System.out.println(e.getMessage());
-            }
-        }
-        currentRevision = number;
-        return printChanges(b);
+        });
     }
 
     private Revision createRevision(File[] files, int revisionId, String commit) {
@@ -135,13 +163,10 @@ public class VersionControl {
         ArrayList<MyFile> lastFiles = new ArrayList<>(this.files);
         ArrayList<MyFile> changedBase = new ArrayList<>(currentFiles);
 
-        removeAllByName(curCopy, lastFiles);        //created
-        removeAllByName(lastFiles, currentFiles);   //deleted
-        removeAllByName(changedBase, lastFiles);    //probably changed -> check last modify
-        removeAllByName(changedBase, curCopy);
-        /*var a = changedBase.get(0).date;
-        var b = revisions.get(revisions.size() - 1).date.getTime();
-        boolean f = a > b;*/
+        removeAllByPath(curCopy, lastFiles);        //created
+        removeAllByPath(lastFiles, currentFiles);   //deleted
+        removeAllByPath(changedBase, lastFiles);    //probably changed -> check last modify
+        removeAllByPath(changedBase, curCopy);
         var changed = changedBase
                 .stream()
                 .filter(x -> x.date > revisions.get(revisions.size() - 1).date.getTime())
@@ -149,29 +174,28 @@ public class VersionControl {
         return new Revision(revisionId, commit, currentFiles.size(), curCopy, lastFiles, changed);
     }
 
-    void removeAllByName(ArrayList<MyFile> from, ArrayList<MyFile> thiss) {
-        for (MyFile file : thiss)
-            from.removeIf(x -> x.name.equals(file.name));
+    void removeAllByPath(ArrayList<MyFile> from, ArrayList<MyFile> thiss) {
+        thiss.forEach(file -> from.removeIf(x -> x.path.equals(file.path)));
     }
 
     private File[] getCurrentFiles() {
-        String jarName = "";
+        File jarnik = new File("vcs.jar");
+        File parent = jarnik.getAbsoluteFile().getParentFile();
+        ArrayList<String> ignore = new ArrayList<String>(List.of(jarnik.getName(), parent.getName(), vcsDataName));
+        File[] files = new File[0];
         try {
-            jarName = new File(getClass().getProtectionDomain()
-                    .getCodeSource()
-                    .getLocation()
-                    .toURI())
-                    .getName();
-        } catch (URISyntaxException e) {
-            System.out.println(e.getMessage());
+            files = Files
+                    .walk(Paths.get(parent.getAbsolutePath()))
+                    .map(Path::toFile)
+                    .filter(x -> !ignore.contains(x.getName()))
+                    .toArray(File[]::new);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        File parent = new File(fileVsc.getAbsolutePath()).getParentFile();
-        File[] files = parent.listFiles();
-        String finalJarName = jarName; //шоб компилер не ругался
-        return Arrays.stream(files).filter(x -> !x.getName().equals(vscName) && !x.getName().equals(finalJarName)).toArray(File[]::new);
+        return files;
     }
 
-    private Revision getChangeList(ArrayList<Revision> revs) {
+    private Revision getResultRevision(ArrayList<Revision> revs) {
         var c = new ArrayList<MyFile>();
         var d = new ArrayList<MyFile>();
         var m = new ArrayList<MyFile>();
@@ -181,7 +205,7 @@ public class VersionControl {
             if (r.modified != null) m.addAll(r.modified);
         }
         var cCopy = new ArrayList<>(c);
-        removeAllByName(c, d);
+        removeAllByPath(c, d);
         var toDel = new ArrayList<MyFile>();
         var toIns = new ArrayList<MyFile>();
 
@@ -195,9 +219,9 @@ public class VersionControl {
         }
         c.removeAll(toDel);
         c.addAll(toIns);
-        removeAllByName(m, d);
-        removeAllByName(m, c);
-        removeAllByName(d, cCopy);
+        removeAllByPath(m, d);
+        removeAllByPath(m, c);
+        removeAllByPath(d, cCopy);
         return new Revision(-1, "", -1, c, d, m);
     }
 
@@ -208,9 +232,7 @@ public class VersionControl {
         var m = revision.modified;
         if (c.size() == 0 && d.size() == 0 && m.size() == 0)
             return "No changes.";
-        c.sort(Comparator.comparing(x -> x.name));
-        d.sort(Comparator.comparing(x -> x.name));
-        m.sort(Comparator.comparing(x -> x.name));
+        Stream.of(c,d,m).forEach(x -> x.sort(Comparator.comparing(y -> y.name)));
         appendFilesToBuilder(mes, c, "Created", '+');
         appendFilesToBuilder(mes, d, "Deleted", '-');
         appendFilesToBuilder(mes, m, "Modified", '*');

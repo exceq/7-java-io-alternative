@@ -1,62 +1,67 @@
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.Scanner;
+import java.util.Optional;
 
 public class Task {
-    //TODO убрать сущность имени из vcs
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         StatusExec out = executeCommand(args);
         switch (out) {
             case PARAMERROR:
-                System.out.println("Invalid count of params");
+                System.out.println("Error: Invalid count of params");
+                break;
+            case PARSEINTERROR:
+                System.out.println("Error: Arguments must be numbers");
                 break;
             case UNKNOWN:
-                System.out.println("Unknown command.");
+                System.out.println("Error: Unknown command.");
                 break;
         }
     }
 
     static StatusExec executeCommand(String[] command) {
-        String name = command[0] + ".vcsdata";
-        boolean loaded = Controller.tryLoad(name);
+        boolean loaded = Controller.tryLoad();
         StatusExec st = StatusExec.OK;
         String message = null;
+        int len = command.length;
 
-        if (command.length < 2)
+        if (len < 1)
             return StatusExec.UNKNOWN;
 
-        switch (command[1]) {
+        switch (command[0]) {
             case "init":
-                try {
-                    if (loaded)
-                        message = "Vcs already created in this folder";
-                    else
-                        message = Controller.init(name);
-                } catch (Exception e) {
-                    System.out.println(e.getMessage());
-                }
+                message = loaded ? "Vcs already created in this folder" : Controller.init();
                 break;
             case "commit":
-                if (command.length != 3)
+                if (len != 2)
                     return StatusExec.PARAMERROR;
-                message = Controller.commit(name, command[2]);
+                message = Controller.commit(command[1]);
                 break;
             case "status":
-                message = Controller.status(name);
+                if (len != 1)
+                    return StatusExec.PARAMERROR;
+                message = Controller.status();
                 break;
             case "log":
-                message = Controller.log(name);
+                if (len != 1)
+                    return StatusExec.PARAMERROR;
+                message = Controller.log();
                 break;
             case "diff":
-                if (command.length != 4)
-                    return StatusExec.PARAMERROR;
-                message = Controller.diff(name, Integer.parseInt(command[2]), Integer.parseInt(command[3]));
-                break;
-            case "checkout":
                 if (command.length != 3)
                     return StatusExec.PARAMERROR;
-                message = Controller.checkout(name, Integer.parseInt(command[2]));
+                Optional<Integer> first = tryParse(command[1]);
+                Optional<Integer> second = tryParse(command[2]);
+                if (first.isPresent() && second.isPresent())
+                    message = Controller.diff(first.get(), second.get());
+                else
+                    return StatusExec.PARSEINTERROR;
+                break;
+            case "checkout":
+                if (command.length != 2)
+                    return StatusExec.PARAMERROR;
+                first = tryParse(command[1]);
+                if (first.isPresent())
+                    message = Controller.checkout(first.get());
+                else
+                    return StatusExec.PARSEINTERROR;
                 break;
             default:
                 st = StatusExec.UNKNOWN;
@@ -65,12 +70,21 @@ public class Task {
         if (message != null)
             System.out.println(message);
         if (Controller.vcs != null)
-            Controller.save(name);
+            Controller.save();
         return st;
+    }
+
+    private static Optional<Integer> tryParse(String input) {
+        try {
+            return Optional.of(Integer.parseInt(input));
+        } catch (NumberFormatException e) {
+            return Optional.empty();
+        }
     }
 
     enum StatusExec {
         UNKNOWN,
+        PARSEINTERROR,
         PARAMERROR,
         OK
     }

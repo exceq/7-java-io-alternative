@@ -1,15 +1,15 @@
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import java.io.File;
 import java.io.IOException;
-import java.util.function.BiFunction;
 
 public class Controller {
     static VersionControl vcs;
+    private static String vcsDataName = "vcsData.data";
+    private static String notInit = "Vcs is not initialized";
 
-    public static void save(String vcsName) {
+    public static void save() {
         ObjectMapper mapper = new ObjectMapper();
-        File f = new File(vcsName);
+        File f = new File(vcsDataName);
         try {
             mapper.writeValue(f, vcs);
         } catch (IOException e) {
@@ -17,15 +17,15 @@ public class Controller {
         }
     }
 
-    public static boolean tryLoad(String name) {
+    public static boolean tryLoad() {
         ObjectMapper mapper = new ObjectMapper();
-        File f = new File(name);
+        File f = new File(vcsDataName);
         if (f.isFile()) {
             try {
                 vcs = mapper.readValue(f, VersionControl.class);
                 return true;
             } catch (IOException e) {
-                e.printStackTrace();
+                //e.printStackTrace();
                 return false;
             }
         }
@@ -33,33 +33,33 @@ public class Controller {
 
     }
 
-    public static String init(String name) {
+    public static String init() {
         if (vcs != null) {
-            return "qeError: vsc " + name + " already created";
+            return "Error: vsc already created";
         } else {
-            vcs = VersionControl.init(name);
+            vcs = VersionControl.init(vcsDataName);
             vcs.commit("Start!");
-            return name + " initialized";
+            return "vcs initialized";
         }
     }
 
-    public static String commit(String vcsName, String commit) {
-        return (vcs != null) ? vcs.commit(commit) : vcsName + " isn't existing";
+    public static String commit(String commit) {
+        return (vcs != null) ? vcs.commit(commit) : notInit;
     }
 
-    public static String status(String vcsName) {
-        return (vcs != null) ? vcs.status() : vcsName + " isn't existing";
+    public static String status() {
+        return (vcs != null) ? vcs.status() : notInit;
     }
 
-    public static String log(String vcsName) {
-        return (vcs != null) ? vcs.log() : vcsName + " isn't existing";
+    public static String log() {
+        return (vcs != null) ? vcs.log() : notInit;
     }
 
-    public static String diff(String vcsName, int first, int second) {
-        return (vcs != null) ? vcs.diff(first, second) : vcsName + " isn't existing";
+    public static String diff(int first, int second) {
+        return (vcs != null) ? vcs.diff(first, second) : notInit;
     }
 
-    public static String checkout(String vcsName, int number) {
-        return (vcs != null) ? vcs.checkout(number) : vcsName + " isn't existing";
+    public static String checkout(int number) {
+        return (vcs != null) ? vcs.checkout(number) : notInit;
     }
 }

@@ -1,6 +1,8 @@
 import lombok.Data;
 
 import java.io.File;
+import java.nio.file.FileVisitOption;
+import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -14,26 +16,38 @@ public class MyFile {
     String content;
     long size;
     long date;
+    boolean isDirectory;
 
     public MyFile() {}
 
     public MyFile(File file) {
         try {
+            file = file.getAbsoluteFile();
             name = file.getName();
-            path = file.getPath();
-            content = new String(Files.readAllBytes(Paths.get(name)));
+            path = file.getAbsolutePath();
+            if (!file.isDirectory())
+                content = new String(Files.readAllBytes(Paths.get(path)));
+            else
+                isDirectory = true;
             size = file.length();
             date = file.lastModified();
         } catch (Exception e){
-            System.out.println("Oops! MyFile is broken!");
+            e.printStackTrace();
         }
     }
 
     static ArrayList<MyFile> getMyFileList(ArrayList<File> files)
     {
+        ArrayList<MyFile> a = new ArrayList<MyFile>();
+        for (File f:files) {
+            a.add(new MyFile(f));
+        }
+        return a;
+/*
         return files.stream()
                     .map(MyFile::new)
                     .collect(Collectors.toCollection(ArrayList<MyFile>::new));
+*/
     }
 
     @Override

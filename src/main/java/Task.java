@@ -69,7 +69,7 @@ public class Task {
         }
         if (message != null)
             System.out.println(message);
-        if (Controller.vcs != null)
+        if (Controller.getVcs() != null)
             Controller.save();
         return st;
     }

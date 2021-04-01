@@ -1,8 +1,5 @@
 import lombok.Data;
-
-import javax.management.ReflectionException;
 import java.io.*;
-import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -89,8 +86,9 @@ public class VersionControl {
             return "You are already on Revision " + number;
         boolean back = number < currentRevision;
 
-        var b = getResultRevision(new ArrayList<>(revisions.subList(Math.min(number, currentRevision), Math.max(number + 1, currentRevision + 1))));
-        if (back) { //forward
+        var b = getResultRevision(new ArrayList<>(
+                revisions.subList(Math.min(number+1, currentRevision+1), Math.max(number+1, currentRevision+1))));
+        if (back) {
             var t = new ArrayList<MyFile>(b.created);
             b.created = new ArrayList<>(b.deleted);
             b.deleted = t;
@@ -174,14 +172,14 @@ public class VersionControl {
         return new Revision(revisionId, commit, currentFiles.size(), curCopy, lastFiles, changed);
     }
 
-    void removeAllByPath(ArrayList<MyFile> from, ArrayList<MyFile> thiss) {
-        thiss.forEach(file -> from.removeIf(x -> x.path.equals(file.path)));
+    void removeAllByPath(ArrayList<MyFile> from, ArrayList<MyFile> it) {
+        it.forEach(file -> from.removeIf(x -> x.path.equals(file.path)));
     }
 
     private File[] getCurrentFiles() {
         File jarnik = new File("vcs.jar");
         File parent = jarnik.getAbsoluteFile().getParentFile();
-        ArrayList<String> ignore = new ArrayList<String>(List.of(jarnik.getName(), parent.getName(), vcsDataName));
+        var ignore = new ArrayList<String>(List.of(jarnik.getName(), parent.getName(), vcsDataName));
         File[] files = new File[0];
         try {
             files = Files
@@ -210,7 +208,7 @@ public class VersionControl {
         var toIns = new ArrayList<MyFile>();
 
         for (MyFile file : c) {
-            var match = m.stream().filter(x -> file.name.equals(x.name)).findFirst();
+            var match = m.stream().filter(x -> file.path.equals(x.path)).findFirst();
             if (match.isPresent()) {
                 MyFile ge = match.get();
                 toIns.add(ge);

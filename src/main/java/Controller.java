@@ -3,9 +3,13 @@ import java.io.File;
 import java.io.IOException;
 
 public class Controller {
-    static VersionControl vcs;
-    private static String vcsDataName = "vcsData.data";
-    private static String notInit = "Vcs is not initialized";
+    private static VersionControl vcs;
+    private final static String vcsDataName = "vcsData.data";
+    private final static String notInit = "Vcs is not initialized";
+
+    public static VersionControl getVcs(){
+        return vcs;
+    }
 
     public static void save() {
         ObjectMapper mapper = new ObjectMapper();
@@ -30,7 +34,6 @@ public class Controller {
             }
         }
         return false;
-
     }
 
     public static String init() {
